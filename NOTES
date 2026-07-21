@@ -1,0 +1,327 @@
+*** GIT AND GITHUB NOTES ***
+
+
+## 1. Initial Setup
+
+git config --global user.name "name"              => sets the name attached to your commits
+git config --global user.email "email@gmail.com"  => sets the email attached to your commits
+git config --global core.editor "code --wait"     => tells Git to use VS Code for commit messages etc.
+git config --global core.autocrlf "input"         => normalizes line endings (Mac/Linux setting)
+git config --global -e                            => opens the actual config file in VS Code to view/edit directly
+
+
+
+## 2. The Git Stages (how Git sees your files)
+
+Untracked (U) => Git sees the file exists, but isn't watching/saving it yet.
+Staged/Added (A) => You've told Git "include this in my next snapshot."
+Committed (C) => The file's current state is permanently saved in Git's history.
+
+Think of it like a checkout process:
+Untracked -> add to cart (stage) -> checkout (commit) -> saved forever in history
+
+
+
+## 3. Checking Status & History
+
+git status -s
+=> Shows a short/compact view of what's changed — which files are staged,
+   unstaged, or untracked. Good for a quick glance.
+
+git log --oneline
+=> Shows your commit history in a compact, one-line-per-commit format —
+   easier to scan than the full git log.
+
+git diff
+=> Shows the EXACT line-by-line changes in your files BEFORE you stage/commit them.
+   Use this to review what you're about to add — catches mistakes early.
+
+
+
+## 4. Starting a New Project
+
+Step 1: git init
+=> Turns the current folder into a Git-tracked project. Creates a hidden
+   .git folder that stores all history. Nothing is saved yet — Git is just
+   "watching" now.
+
+Step 2: Make a checkpoint (save point):
+  a) git add filename       => stage the file (or "git add ." for all files)
+  b) git commit -m "message" => permanently save the staged changes as a snapshot,
+                                  with a description of what changed
+
+git restore --staged filename   => undo "git add" but KEEP your changes (unlike reset --hard, which deletes them)
+
+git commit --amend -m "new message"   => fix your LAST commit's message, or add a forgotten file to it, instead of making a whole new commit
+
+
+
+## 5. Viewing & Reverting History
+
+git log --oneline                => see all saved points/checkpoints
+git log --oneline --graph        => see branch change graph
+git reset --hard HEAD~1          => revert back to the previous checkpoint (discards changes)
+
+
+## 6. Branches
+
+git branch
+=> Lists all branches in your project. The one with * next to it is your
+   current branch — that's where any add/commit you do right now will land.
+
+git branch branch-name
+=> Create a branch (without switching to it)
+
+git checkout -b branch-name
+=> Create + switch to it in one step (this is what people actually use most)
+
+git switch branch-name
+=> Moves you to a different branch. Your files update to match whatever
+   was last committed on that branch.
+
+git restore filename
+=> (modern replacement for "git checkout filename") Discards changes to ONE
+   specific file, reverting it back to how it looked in the last commit.
+   NOTE: git switch is ONLY for branches, never files.
+
+
+* Adding files to a branch (just normal add + commit)
+
+1. Switch to the branch first:
+   git checkout branch-name   (or git switch branch-name)
+
+2. Then work as usual:
+   git add filename
+   git commit -m "message"
+
+=> Whatever branch you're currently on is where add/commit saves to.
+   No special command needed — just switch first, then add/commit normally.
+   A branch name has NOTHING to do with file names — files keep their
+   normal names no matter which branch you're on.
+
+git merge branch-name
+=> Combines another branch's changes into the branch you're currently on.
+   You merge a BRANCH, not a file/filename.
+   Typically done after switching to "main": git switch main -> git merge feature-branch
+
+
+
+## 7. Stashing (temporary draft of changes)
+
+git stash
+=> Temporarily saves your uncommitted changes aside (like a draft), and gives
+   you a clean working folder — useful when you need to switch branches but
+   aren't ready to commit yet.
+
+git stash apply
+=> Brings your stashed draft back into your current branch, so you can
+   continue where you left off.
+
+git stash clear
+=> Deletes all stashed drafts permanently.
+
+
+
+## 8. Ignoring Files
+
+.gitignore (a file you create in your project)
+=> Lists files/folders Git should NEVER track — like secrets, dependency
+   folders, or system files. Prevents accidentally committing junk or
+   sensitive data.
+
+Example .gitignore contents:
+.env
+node_modules/
+.DS_Store
+
+
+
+## 9. Collaboration (this is where GitHub actually enters the picture)
+
+NOTE: Everything in sections 1-8 above is LOCAL only — it happens entirely on
+your own computer, in your own branch, whether or not GitHub is involved at all.
+This section is the first time your work actually gets shared with GitHub / other people.
+
+--- Person A — starts the project ---
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin <repo-url>     => links your local folder to a GitHub repo
+git push -u origin main               => uploads local main branch to GitHub
+
+--- Person B — joins the project ---
+git clone <repo-url>                  => downloads the whole project to their computer
+git switch -c feature-login            => creates + switches to their OWN branch
+[edit files]
+git add .
+git commit -m "Added login page"
+git push -u origin feature-login       => uploads THEIR branch (not main) to GitHub
+   NOTE: you push a BRANCH NAME, not a filename.
+
+--- Person C (or A) — merges the work in ---
+git fetch origin        => checks for new branches/changes on GitHub (does NOT merge)
+git switch main           => go to main locally
+git pull origin main       => make sure local main is fully up to date
+git merge feature-login     => bring Person B's branch into main
+git push origin main         => upload the updated main back to GitHub
+
+--- Everyone else ---
+git pull origin main    => get the newly merged changes onto their own computer
+
+Key idea: nobody edits "main" directly. Everyone works on their OWN branch,
+pushes that branch, and someone reviews + merges it into main. On GitHub itself,
+this reviewing/merging step is usually done through a "Pull Request" instead of
+typing merge commands manually — same underlying process, just with a review
+step built in before the merge happens.
+
+
+## 10. Real troubleshooting notes (from actually doing it)
+
+Problem: git push / git pull said "Already up to date" even though I had
+edited a file and expected it to upload.
+
+Cause: I had NOT actually committed the file locally yet. The file existed
+on disk but wasn't staged/committed — so Git had no new local commit to send.
+Push only sends commits that exist locally and don't exist on GitHub yet.
+
+Fix: had to do the full sequence before push actually had something to do:
+   git add .
+   git commit -m "message"
+   git push origin main
+
+Lesson: add + commit only save locally, on YOUR computer. GitHub has no idea
+anything changed until you push. You can commit 100 times locally and GitHub
+will still show the old version until push happens. Every update, every time,
+needs all three steps — add, commit, push — no shortcuts.
+
+--- .DS_Store cleanup (Mac-specific junk file) ---
+echo ".DS_Store" > .gitignore
+git add .gitignore
+git commit -m "Add gitignore for DS_Store"
+git push origin main
+=> stops Git from ever tracking macOS's auto-generated .DS_Store file again
+
+
+--- Uploading files directly on github.com (drag-and-drop / "Add file") ---
+This ALSO creates a real commit, same as git commit locally — GitHub just
+does it for you through the website instead of the terminal. A repo built
+this way works exactly the same as one built locally.
+
+To continue working on it using terminal commands going forward:
+   git clone <repo-url>    => downloads it to your computer
+   [then use the normal add / commit / push flow from here on]
+
+Git doesn't care HOW a commit was made (terminal vs website upload) —
+only that it exists. Both are fully compatible with each other.
+
+
+## 11. The IDEAL flow — uploading a brand new project to GitHub, start to finish
+
+This is the clean sequence to follow from scratch, avoiding the
+"already up to date" / unrelated histories confusion entirely.
+
+Step 1: Create the repo on GitHub FIRST
+   - Go to github.com -> New repository
+   - Give it a name
+   - IMPORTANT: do NOT check "Add a README" if you already have local files
+     ready to push (this avoids the unrelated-histories problem entirely)
+   - Click Create repository -> copy the repo URL it gives you
+
+Step 2: Set up Git locally (in your project folder)
+   git init
+   git add .
+   git commit -m "Initial commit"
+
+Step 3: Connect local folder to the GitHub repo
+   git remote add origin <repo-url>
+   git branch -M main
+      => renames local branch to "main" if it wasn't already
+
+Step 4: Push it up
+   git push -u origin main
+      => the -u saves this connection, so next time you can just type "git push"
+
+Step 5: Confirm
+   - Refresh the repo page on github.com
+   - Your files should now be visible there
+
+--- From now on, every time you make changes ---
+   git add .
+   git commit -m "describe what changed"
+   git push
+
+--- If you DID start with a README already on GitHub (unrelated histories) ---
+   git pull origin main --allow-unrelated-histories
+   git push -u origin main
+   => merges GitHub's history with your local history, then this only
+      needs to be done once, right at the start
+
+Lesson: cleanest path is create the repo empty (no README) -> init locally
+-> add/commit -> remote add -> push. Skips all the merge-conflict-with-README
+confusion entirely.
+
+
+## 12. Why things go wrong (real lesson learned)
+
+Situation: followed steps correctly but git commit kept saying
+"no changes added to commit" / git push kept saying "Everything up-to-date"
+even though files were clearly changed.
+
+Root causes found:
+1. The folder already had an existing .git repo from before (git init said
+   "Reinitialized existing Git repository" instead of creating a fresh one).
+   Old leftover tracked/staged files were still sitting there.
+
+2. Files got deleted/renamed OUTSIDE of git (via Finder/VS Code/terminal
+   directly) instead of using git commands. Git doesn't watch the filesystem
+   live — it only finds out when you run git status or git add.
+
+3. THE BIG ONE: git commit does NOT auto-detect changes. It only commits
+   whatever has already been staged with git add. If nothing is staged,
+   commit does nothing — even if files were obviously edited/deleted/added.
+   This is why several commits appeared to "do nothing."
+
+GOLDEN RULE: git commit never guesses. It only saves exactly what git add
+staged. No staging = commit is a no-op, and push will say "Everything
+up-to-date" because there was nothing new to send in the first place.
+
+
+## 13. THE IDEAL FLOW (from absolute scratch)
+
+Step 1 — check where you are / if a .git already exists
+   pwd
+   ls -la
+   (if an old .git exists and you want a truly fresh start: rm -rf .git)
+
+Step 2 — initialize once
+   git init
+
+Step 3 — check status before doing anything
+   git status
+
+Step 4 — stage everything
+   git add .
+
+Step 5 — check status again to confirm what got staged
+   git status
+
+Step 6 — commit
+   git commit -m "Initial commit"
+
+Step 7 — connect to GitHub
+   git remote add origin <repo-url>
+   git branch -M main
+
+Step 8 — push
+   git push -u origin main
+
+--- The golden loop for every future update (this is what prevents the mess) ---
+   git status                       => ALWAYS check first, see what changed
+   git add .                        => stage it, never skip this
+   git status                       => confirm it staged correctly
+   git commit -m "describe change"
+   git push
+
+Habit that fixes almost every confusing Git situation: run git status
+before AND after every add/commit. It takes 2 seconds and shows exactly
+what Git sees — staged, unstaged, untracked, or deleted.
